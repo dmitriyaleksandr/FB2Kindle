@@ -28,6 +28,18 @@ class MainWindow(QMainWindow):
 
         # Полные пути выбранных книг
         self.books = []
+        # Папка сохранения EPUB по умолчанию
+        self.output_folder = (
+            Path.home()
+            / "Documents"
+            / "FB2Kindle"
+            / "Output"
+        )
+
+        self.output_folder.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
         self.create_ui()
 
@@ -104,12 +116,16 @@ class MainWindow(QMainWindow):
         folder_label = QLabel("Папка сохранения:")
 
         self.folder_edit = QLineEdit()
-        self.folder_edit.setPlaceholderText(
-            "Папка для EPUB файлов"
+        self.folder_edit.setText(str(self.output_folder))
+
+        self.browse_button = QPushButton("Обзор...")
+        self.browse_button.clicked.connect(
+            self.select_output_folder
         )
 
         folder_layout.addWidget(folder_label)
-        folder_layout.addWidget(self.folder_edit)
+        folder_layout.addWidget(self.folder_edit, 1)
+        folder_layout.addWidget(self.browse_button)
 
         main_layout.addLayout(folder_layout)
 
@@ -221,3 +237,24 @@ class MainWindow(QMainWindow):
             self.convert_button.setEnabled(False)
 
         self.log.append(f"Удалено книг: {len(rows)}")
+
+        self.books_table.clearSelection()
+
+    # ======================================================
+
+    def select_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Выберите папку для сохранения EPUB"
+        )
+
+        if not folder:
+            return
+
+        self.output_folder = Path(folder)
+
+        self.folder_edit.setText(str(self.output_folder))
+
+        self.log.append(
+            f"Папка сохранения изменена:\n{self.output_folder}"
+        )
