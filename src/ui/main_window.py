@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from PySide6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -19,6 +22,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("FB2Kindle")
         self.resize(1000, 700)
 
+        # Полные пути ко всем выбранным книгам
+        self.books = []
+
         self.create_ui()
 
     def create_ui(self):
@@ -27,7 +33,6 @@ class MainWindow(QMainWindow):
 
         main_layout = QVBoxLayout(central_widget)
 
-        # Заголовок
         title = QLabel("FB2Kindle")
         title.setStyleSheet("""
             font-size: 28px;
@@ -37,11 +42,14 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(title)
 
-        # Панель кнопок
+        # ---------- Кнопки ----------
+
         buttons_layout = QHBoxLayout()
 
         self.add_button = QPushButton("Добавить книги")
         self.remove_button = QPushButton("Удалить")
+
+        self.add_button.clicked.connect(self.add_books)
 
         buttons_layout.addWidget(self.add_button)
         buttons_layout.addWidget(self.remove_button)
@@ -49,19 +57,21 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(buttons_layout)
 
-        # Таблица книг
+        # ---------- Таблица ----------
+
         self.books_table = QTableWidget()
 
         self.books_table.setColumnCount(2)
         self.books_table.setHorizontalHeaderLabels(
-            ["Файл", "Статус"]
+            ["Имя книги", "Статус"]
         )
 
-        self.books_table.setRowCount(0)
+        self.books_table.horizontalHeader().setStretchLastSection(True)
 
         main_layout.addWidget(self.books_table)
 
-        # Папка сохранения
+        # ---------- Папка сохранения ----------
+
         folder_layout = QHBoxLayout()
 
         folder_label = QLabel("Папка сохранения:")
@@ -76,16 +86,16 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(folder_layout)
 
-        # Кнопка конвертации
+        # ---------- Кнопка конвертации ----------
+
         self.convert_button = QPushButton(
             "Конвертировать"
         )
 
-        main_layout.addWidget(
-            self.convert_button
-        )
+        main_layout.addWidget(self.convert_button)
 
-        # Журнал
+        # ---------- Журнал ----------
+
         log_label = QLabel("Журнал работы:")
 
         self.log = QTextEdit()
@@ -94,6 +104,49 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(log_label)
         main_layout.addWidget(self.log)
 
+        self.log.append("FB2Kindle запущен.")
+
+    # ======================================================
+
+    def add_books(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Выберите книги",
+            "",
+            "FB2 files (*.fb2)"
+        )
+
+        if not files:
+            return
+
+        added = 0
+
+        for file_path in files:
+
+            if file_path in self.books:
+                continue
+
+            self.books.append(file_path)
+
+            row = self.books_table.rowCount()
+            self.books_table.insertRow(row)
+
+            file_name = Path(file_path).name
+
+            self.books_table.setItem(
+                row,
+                0,
+                QTableWidgetItem(file_name)
+            )
+
+            self.books_table.setItem(
+                row,
+                1,
+                QTableWidgetItem("Ожидание")
+            )
+
+            added += 1
+
         self.log.append(
-            "FB2Kindle запущен."
+            f"Добавлено книг: {added}"
         )
