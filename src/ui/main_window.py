@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
+    QAbstractItemView,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -39,10 +41,17 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("""
             font-size: 28px;
             font-weight: bold;
-            padding: 10px;
+            padding: 0;
+        """)
+
+        subtitle = QLabel("Конвертация книг FB2 → EPUB для Kindle")
+        subtitle.setStyleSheet("""
+            color: gray;
+            padding-bottom: 10px;
         """)
 
         main_layout.addWidget(title)
+        main_layout.addWidget(subtitle)
 
         # ---------- Панель кнопок ----------
 
@@ -52,6 +61,7 @@ class MainWindow(QMainWindow):
         self.remove_button = QPushButton("Удалить")
 
         self.add_button.clicked.connect(self.add_books)
+        self.remove_button.clicked.connect(self.remove_books)
 
         buttons_layout.addWidget(self.add_button)
         buttons_layout.addWidget(self.remove_button)
@@ -72,6 +82,18 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+
+        self.books_table.setSelectionBehavior(
+            QAbstractItemView.SelectRows
+        )
+
+        self.books_table.setSelectionMode(
+            QAbstractItemView.ExtendedSelection
+        )
+
+        self.books_table.setEditTriggers(
+            QAbstractItemView.NoEditTriggers
+        )
 
         main_layout.addWidget(self.books_table)
 
@@ -94,6 +116,7 @@ class MainWindow(QMainWindow):
         # ---------- Кнопка конвертации ----------
 
         self.convert_button = QPushButton("Конвертировать")
+        self.convert_button.setEnabled(False)
 
         main_layout.addWidget(self.convert_button)
 
@@ -112,7 +135,6 @@ class MainWindow(QMainWindow):
     # ======================================================
 
     def format_size(self, size: int) -> str:
-        """Преобразование размера файла в читаемый вид."""
 
         if size < 1024:
             return f"{size} B"
@@ -147,21 +169,20 @@ class MainWindow(QMainWindow):
             row = self.books_table.rowCount()
             self.books_table.insertRow(row)
 
-            file_name = Path(file_path).name
-            file_size = self.format_size(
-                os.path.getsize(file_path)
-            )
-
             self.books_table.setItem(
                 row,
                 0,
-                QTableWidgetItem(file_name)
+                QTableWidgetItem(Path(file_path).name)
             )
 
             self.books_table.setItem(
                 row,
                 1,
-                QTableWidgetItem(file_size)
+                QTableWidgetItem(
+                    self.format_size(
+                        os.path.getsize(file_path)
+                    )
+                )
             )
 
             self.books_table.setItem(
@@ -172,4 +193,31 @@ class MainWindow(QMainWindow):
 
             added += 1
 
+        if self.books:
+            self.convert_button.setEnabled(True)
+
         self.log.append(f"Добавлено книг: {added}")
+
+    # ======================================================
+
+    def remove_books(self):
+
+        rows = sorted(
+            {
+                index.row()
+                for index in self.books_table.selectedIndexes()
+            },
+            reverse=True
+        )
+
+        if not rows:
+            return
+
+        for row in rows:
+            self.books_table.removeRow(row)
+            del self.books[row]
+
+        if not self.books:
+            self.convert_button.setEnabled(False)
+
+        self.log.append(f"Удалено книг: {len(rows)}")
