@@ -2,19 +2,25 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from src.domain.book import Author, Book, Chapter
-from src.domain.elements import Paragraph
+from src.domain.elements import (
+    Epigraph,
+    Image,
+    Paragraph,
+    Poem,
+    Quote,
+    Subtitle,
+)
 
 
 class FB2Parser:
     """Parses FB2 files into domain models."""
 
     FB2_NS = {
-        "fb": "http://www.gribuser.ru/xml/fictionbook/2.0"
+        "fb": "http://www.gribuser.ru/xml/fictionbook/2.0",
+        "l": "http://www.w3.org/1999/xlink",
     }
 
     def parse(self, file_path: Path) -> Book:
-        """Parse an FB2 file into a Book object."""
-
         tree = ET.parse(file_path)
         root = tree.getroot()
 
@@ -65,7 +71,11 @@ class FB2Parser:
 
         return self._get_text(element)
 
-    def _parse_chapters(self, root: ET.Element) -> list[Chapter]:
+    def _parse_chapters(
+        self,
+        root: ET.Element,
+    ) -> list[Chapter]:
+
         body = root.find(
             "fb:body",
             self.FB2_NS,
@@ -74,17 +84,13 @@ class FB2Parser:
         if body is None:
             return []
 
-        chapters = []
-
-        for section in body.findall(
-            "fb:section",
-            self.FB2_NS,
-        ):
-            chapters.append(
-                self._parse_section(section)
+        return [
+            self._parse_section(section)
+            for section in body.findall(
+                "fb:section",
+                self.FB2_NS,
             )
-
-        return chapters
+        ]
 
     def _parse_section(
         self,
@@ -96,24 +102,82 @@ class FB2Parser:
         )
 
         for element in section:
+
             tag = self._remove_namespace(
                 element.tag
             )
 
-            if tag == "p":
-                text = self._get_text(element)
-
-                if text:
-                    chapter.elements.append(
-                        Paragraph(text)
-                    )
-
-            elif tag == "section":
+            if tag == "section":
                 chapter.children.append(
                     self._parse_section(element)
                 )
 
+            else:
+                document_element = (
+                    self._parse_document_element(
+                        element
+                    )
+                )
+
+                if document_element:
+                    chapter.elements.append(
+                        document_element
+                    )
+
         return chapter
+
+    def _parse_document_element(
+        self,
+        element: ET.Element,
+    ):
+
+        tag = self._remove_namespace(
+            element.tag
+        )
+
+        if tag == "p":
+            text = self._get_text(element)
+
+            if text:
+                return Paragraph(text)
+
+        if tag == "subtitle":
+            text = self._get_text(element)
+
+            if text:
+                return Subtitle(text)
+
+        if tag == "epigraph":
+            text = self._collect_text(element)
+
+            if text:
+                return Epigraph(text)
+
+        if tag == "poem":
+            text = self._collect_text(element)
+
+            if text:
+                return Poem(text)
+
+        if tag == "cite":
+            text = self._collect_text(element)
+
+            if text:
+                return Quote(text)
+
+        if tag == "image":
+            image_id = element.attrib.get(
+                "{http://www.w3.org/1999/xlink}href",
+                "",
+            )
+
+            if image_id.startswith("#"):
+                image_id = image_id[1:]
+
+            if image_id:
+                return Image(image_id)
+
+        return None
 
     def _parse_section_title(
         self,
@@ -126,6 +190,23 @@ class FB2Parser:
         )
 
         return self._get_text(title)
+
+    def _collect_text(
+        self,
+        element: ET.Element,
+    ) -> str:
+
+        texts = []
+
+        for child in element.iter():
+
+            if child.text:
+                text = child.text.strip()
+
+                if text:
+                    texts.append(text)
+
+        return "\n".join(texts)
 
     def _get_child_text(
         self,
