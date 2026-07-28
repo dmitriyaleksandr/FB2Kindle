@@ -1,7 +1,7 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from src.domain.book import Book
+from src.domain.book import Author, Book
 
 
 class FB2Parser:
@@ -27,28 +27,25 @@ class FB2Parser:
             self.FB2_NS,
         )
 
-        return element.text.strip() if element is not None and element.text else ""
+        if element is None or element.text is None:
+            return ""
 
-    def _parse_author(self, root: ET.Element) -> str:
-        first_name = root.find(
-            "fb:description/fb:title-info/fb:author/fb:first-name",
+        return element.text.strip()
+
+    def _parse_author(self, root: ET.Element) -> Author:
+        author = root.find(
+            "fb:description/fb:title-info/fb:author",
             self.FB2_NS,
         )
 
-        last_name = root.find(
-            "fb:description/fb:title-info/fb:author/fb:last-name",
-            self.FB2_NS,
+        if author is None:
+            return Author()
+
+        return Author(
+            first_name=self._get_child_text(author, "fb:first-name"),
+            middle_name=self._get_child_text(author, "fb:middle-name"),
+            last_name=self._get_child_text(author, "fb:last-name"),
         )
-
-        parts = []
-
-        if first_name is not None and first_name.text:
-            parts.append(first_name.text.strip())
-
-        if last_name is not None and last_name.text:
-            parts.append(last_name.text.strip())
-
-        return " ".join(parts)
 
     def _parse_language(self, root: ET.Element) -> str:
         element = root.find(
@@ -56,4 +53,19 @@ class FB2Parser:
             self.FB2_NS,
         )
 
-        return element.text.strip() if element is not None and element.text else ""
+        if element is None or element.text is None:
+            return ""
+
+        return element.text.strip()
+
+    def _get_child_text(
+        self,
+        parent: ET.Element,
+        path: str,
+    ) -> str:
+        element = parent.find(path, self.FB2_NS)
+
+        if element is None or element.text is None:
+            return ""
+
+        return element.text.strip()

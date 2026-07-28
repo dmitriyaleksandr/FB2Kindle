@@ -9,7 +9,7 @@ def main():
     book = parser.parse(Path(r"C:\Users\dmitr\OneDrive\Desktop\Трудно быть богом.fb2"))
 
     print(f"Название : {book.title}")
-    print(f"Автор     : {book.author}")
+    print(f"Автор     : {book.author.full_name}")
     print(f"Язык      : {book.language}")
 
 
