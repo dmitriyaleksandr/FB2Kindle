@@ -1,0 +1,1 @@
+This file verifies that Codex can create, commit, and push changes from the local workspace.
