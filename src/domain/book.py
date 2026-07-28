@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+from src.domain.elements import DocumentElement
+
 
 @dataclass(slots=True)
 class Author:
@@ -24,10 +26,15 @@ class Author:
 
 @dataclass(slots=True)
 class Chapter:
-    """Represents a single book chapter."""
+    """Represents a chapter or section of a book."""
 
-    title: str
-    content: str
+    title: str = ""
+    elements: list[DocumentElement] = field(
+        default_factory=list
+    )
+    children: list["Chapter"] = field(
+        default_factory=list
+    )
 
 
 @dataclass(slots=True)
@@ -38,4 +45,6 @@ class Book:
     author: Author = field(default_factory=Author)
     language: str = ""
     cover: bytes | None = None
-    chapters: list[Chapter] = field(default_factory=list)
+    chapters: list[Chapter] = field(
+        default_factory=list
+    )
