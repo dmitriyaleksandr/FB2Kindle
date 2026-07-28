@@ -11,6 +11,10 @@ from src.domain.elements import (
     Subtitle,
 )
 
+from src.infrastructure.resource_extractor import (
+    ResourceExtractor,
+)
+
 
 class FB2Parser:
     """Parses FB2 files into domain models."""
@@ -20,6 +24,9 @@ class FB2Parser:
         "l": "http://www.w3.org/1999/xlink",
     }
 
+    def __init__(self):
+        self.resource_extractor = ResourceExtractor()
+
     def parse(self, file_path: Path) -> Book:
         tree = ET.parse(file_path)
         root = tree.getroot()
@@ -28,6 +35,7 @@ class FB2Parser:
             title=self._parse_title(root),
             author=self._parse_author(root),
             language=self._parse_language(root),
+            resources=self.resource_extractor.extract(root),
             chapters=self._parse_chapters(root),
         )
 

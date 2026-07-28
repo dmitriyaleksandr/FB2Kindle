@@ -71,6 +71,15 @@ def main():
 
     print()
 
+    print("Ресурсы:")
+
+    for name, data in book.resources.items():
+        print(
+            f"  {name}: {len(data)} bytes"
+        )
+
+    print()
+
     print(
         f"Глав верхнего уровня: "
         f"{len(book.chapters)}"

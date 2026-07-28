@@ -29,9 +29,11 @@ class Chapter:
     """Represents a chapter or section of a book."""
 
     title: str = ""
+
     elements: list[DocumentElement] = field(
         default_factory=list
     )
+
     children: list["Chapter"] = field(
         default_factory=list
     )
@@ -42,9 +44,17 @@ class Book:
     """Represents a parsed FB2 book."""
 
     title: str = ""
-    author: Author = field(default_factory=Author)
+
+    author: Author = field(
+        default_factory=Author
+    )
+
     language: str = ""
-    cover: bytes | None = None
+
+    resources: dict[str, bytes] = field(
+        default_factory=dict
+    )
+
     chapters: list[Chapter] = field(
         default_factory=list
     )
