@@ -2,8 +2,15 @@ from ebooklib import epub
 
 from src.domain.book import Book
 from src.domain.book import Chapter
-from src.domain.elements import DocumentElement
-from src.domain.elements import Paragraph
+from src.domain.elements import (
+    DocumentElement,
+    Epigraph,
+    Image,
+    Paragraph,
+    Poem,
+    Quote,
+    Subtitle,
+)
 
 
 class XHTMLRenderer:
@@ -77,12 +84,66 @@ class XHTMLRenderer:
         element: DocumentElement,
     ) -> list[str]:
 
-        if isinstance(
-            element,
-            Paragraph,
-        ):
-            return [
-                f"<p>{element.text}</p>"
-            ]
+        if isinstance(element, Paragraph):
+            return self._render_paragraph(element)
+
+        if isinstance(element, Subtitle):
+            return self._render_subtitle(element)
+
+        if isinstance(element, Epigraph):
+            return self._render_epigraph(element)
+
+        if isinstance(element, Quote):
+            return self._render_quote(element)
+
+        if isinstance(element, Poem):
+            return self._render_poem(element)
+
+        if isinstance(element, Image):
+            return self._render_image(element)
+
+        return []
+
+    def _render_paragraph(
+        self,
+        paragraph: Paragraph,
+    ) -> list[str]:
+
+        return [
+            f"<p>{paragraph.text}</p>",
+        ]
+
+    def _render_subtitle(
+        self,
+        subtitle: Subtitle,
+    ) -> list[str]:
+
+        return []
+
+    def _render_epigraph(
+        self,
+        epigraph: Epigraph,
+    ) -> list[str]:
+
+        return []
+
+    def _render_quote(
+        self,
+        quote: Quote,
+    ) -> list[str]:
+
+        return []
+
+    def _render_poem(
+        self,
+        poem: Poem,
+    ) -> list[str]:
+
+        return []
+
+    def _render_image(
+        self,
+        image: Image,
+    ) -> list[str]:
 
         return []
