@@ -1,7 +1,7 @@
-from ebooklib import epub
+from dataclasses import dataclass
+from html import escape
 
-from src.domain.book import Book
-from src.domain.book import Chapter
+from src.domain.book import Book, Chapter
 from src.domain.elements import (
     DocumentElement,
     Epigraph,
@@ -13,124 +13,113 @@ from src.domain.elements import (
 )
 
 
-class XHTMLRenderer:
-    """Renders Book objects into XHTML documents."""
+@dataclass(frozen=True, slots=True)
+class RenderedChapter:
+    """The XHTML content and metadata for one EPUB chapter document."""
 
-    def render_book(
+    title: str
+    file_name: str
+    content: str
+
+
+class XHTMLRenderer:
+    """Renders Book chapters into EPUB-independent XHTML fragments."""
+
+    def render_chapters(
         self,
         book: Book,
-    ) -> epub.EpubHtml:
+    ) -> list[RenderedChapter]:
+        """Render every section, including nested sections, as one document."""
 
-        page = epub.EpubHtml(
-            title=book.title,
-            file_name="index.xhtml",
-            lang=book.language,
-        )
-
-        html = [
-            "<html>",
-            "<body>",
-            f"<h1>{book.title}</h1>",
-        ]
+        rendered_chapters: list[RenderedChapter] = []
 
         for chapter in book.chapters:
-            html.extend(
-                self._render_chapter(
-                    chapter,
+            self._render_chapter_tree(
+                chapter,
+                rendered_chapters,
+            )
+
+        if not rendered_chapters:
+            rendered_chapters.append(
+                RenderedChapter(
+                    title=book.title or "Untitled",
+                    file_name="chapter_001.xhtml",
+                    content=self._render_empty_book(book),
                 )
             )
 
-        html.extend(
-            [
-                "</body>",
-                "</html>",
-            ]
+        return rendered_chapters
+
+    def _render_chapter_tree(
+        self,
+        chapter: Chapter,
+        rendered_chapters: list[RenderedChapter],
+    ) -> None:
+        chapter_number = len(rendered_chapters) + 1
+        title = chapter.title or f"Chapter {chapter_number}"
+
+        rendered_chapters.append(
+            RenderedChapter(
+                title=title,
+                file_name=f"chapter_{chapter_number:03}.xhtml",
+                content=self._render_chapter(chapter) or "<p></p>",
+            )
         )
 
-        page.content = "\n".join(html)
+        for child in chapter.children:
+            self._render_chapter_tree(
+                child,
+                rendered_chapters,
+            )
 
-        return page
+    def _render_empty_book(
+        self,
+        book: Book,
+    ) -> str:
+        if not book.title:
+            return ""
+
+        return f"<h1>{escape(book.title)}</h1>"
 
     def _render_chapter(
         self,
         chapter: Chapter,
-    ) -> list[str]:
-
-        html = []
+    ) -> str:
+        html: list[str] = []
 
         if chapter.title:
             html.append(
-                f"<h2>{chapter.title}</h2>"
+                f"<h1>{escape(chapter.title)}</h1>"
             )
 
         for element in chapter.elements:
             html.extend(
-                self._render_element(
-                    element,
-                )
+                self._render_element(element)
             )
 
-        for child in chapter.children:
-            html.extend(
-                self._render_chapter(
-                    child,
-                )
-            )
-
-        return html
+        return "\n".join(html)
 
     def _render_element(
         self,
         element: DocumentElement,
     ) -> list[str]:
+        if isinstance(element, Paragraph):
+            return self._render_paragraph(element)
 
-        if isinstance(
-            element,
-            Paragraph,
-        ):
-            return self._render_paragraph(
-                element,
-            )
+        if isinstance(element, Subtitle):
+            return self._render_subtitle(element)
 
-        if isinstance(
-            element,
-            Subtitle,
-        ):
-            return self._render_subtitle(
-                element,
-            )
+        if isinstance(element, Epigraph):
+            return self._render_epigraph(element)
 
-        if isinstance(
-            element,
-            Epigraph,
-        ):
-            return self._render_epigraph(
-                element,
-            )
+        if isinstance(element, Quote):
+            return self._render_quote(element)
 
-        if isinstance(
-            element,
-            Quote,
-        ):
-            return self._render_quote(
-                element,
-            )
+        if isinstance(element, Poem):
+            return self._render_poem(element)
 
-        if isinstance(
-            element,
-            Poem,
-        ):
-            return self._render_poem(
-                element,
-            )
-
-        if isinstance(
-            element,
-            Image,
-        ):
-            return self._render_image(
-                element,
-            )
+        if isinstance(element, Image):
+            return self._render_image(element)
 
         return []
 
@@ -138,39 +127,39 @@ class XHTMLRenderer:
         self,
         paragraph: Paragraph,
     ) -> list[str]:
-
-        return [
-            f"<p>{paragraph.text}</p>",
-        ]
+        return [f"<p>{escape(paragraph.text)}</p>"]
 
     def _render_subtitle(
         self,
         subtitle: Subtitle,
     ) -> list[str]:
-
-        return [
-            f"<h3>{subtitle.text}</h3>",
-        ]
+        return [f"<h2>{escape(subtitle.text)}</h2>"]
 
     def _render_epigraph(
         self,
         epigraph: Epigraph,
     ) -> list[str]:
-
-        return [
-            "<blockquote>",
-            f"<p>{epigraph.text}</p>",
-            "</blockquote>",
-        ]
+        return self._render_blockquote(epigraph.text)
 
     def _render_quote(
         self,
         quote: Quote,
     ) -> list[str]:
+        return self._render_blockquote(quote.text)
+
+    def _render_blockquote(
+        self,
+        text: str,
+    ) -> list[str]:
+        paragraphs = text.split("\n")
 
         return [
             "<blockquote>",
-            f"<p>{quote.text}</p>",
+            *(
+                f"<p>{escape(paragraph)}</p>"
+                for paragraph in paragraphs
+                if paragraph
+            ),
             "</blockquote>",
         ]
 
@@ -178,25 +167,17 @@ class XHTMLRenderer:
         self,
         poem: Poem,
     ) -> list[str]:
-
-        html = [
-            "<div class=\"poem\">",
-        ]
+        lines = ["<div class=\"poem\">"]
 
         for line in poem.text.split("\n"):
-            html.append(
-                f"{line}<br/>"
-            )
+            lines.append(f"{escape(line)}<br />")
 
-        html.append(
-            "</div>"
-        )
+        lines.append("</div>")
 
-        return html
+        return lines
 
     def _render_image(
         self,
         image: Image,
     ) -> list[str]:
-
         return []
