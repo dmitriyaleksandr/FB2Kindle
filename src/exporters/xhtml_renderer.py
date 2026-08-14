@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from html import escape
 
@@ -15,8 +16,6 @@ from src.domain.elements import (
 
 @dataclass(frozen=True, slots=True)
 class RenderedChapter:
-    """The XHTML content and metadata for one EPUB chapter document."""
-
     title: str
     file_name: str
     content: str
@@ -28,15 +27,16 @@ class XHTMLRenderer:
     def render_chapters(
         self,
         book: Book,
+        image_paths: Mapping[str, str] | None = None,
     ) -> list[RenderedChapter]:
-        """Render every section, including nested sections, as one document."""
-
         rendered_chapters: list[RenderedChapter] = []
+        image_paths = image_paths or {}
 
         for chapter in book.chapters:
             self._render_chapter_tree(
                 chapter,
                 rendered_chapters,
+                image_paths,
             )
 
         if not rendered_chapters:
@@ -54,6 +54,7 @@ class XHTMLRenderer:
         self,
         chapter: Chapter,
         rendered_chapters: list[RenderedChapter],
+        image_paths: Mapping[str, str],
     ) -> None:
         chapter_number = len(rendered_chapters) + 1
         title = chapter.title or f"Chapter {chapter_number}"
@@ -62,7 +63,7 @@ class XHTMLRenderer:
             RenderedChapter(
                 title=title,
                 file_name=f"chapter_{chapter_number:03}.xhtml",
-                content=self._render_chapter(chapter) or "<p></p>",
+                content=self._render_chapter(chapter, image_paths) or "<p></p>",
             )
         )
 
@@ -70,6 +71,7 @@ class XHTMLRenderer:
             self._render_chapter_tree(
                 child,
                 rendered_chapters,
+                image_paths,
             )
 
     def _render_empty_book(
@@ -84,24 +86,22 @@ class XHTMLRenderer:
     def _render_chapter(
         self,
         chapter: Chapter,
+        image_paths: Mapping[str, str],
     ) -> str:
         html: list[str] = []
 
         if chapter.title:
-            html.append(
-                f"<h1>{escape(chapter.title)}</h1>"
-            )
+            html.append(f"<h1>{escape(chapter.title)}</h1>")
 
         for element in chapter.elements:
-            html.extend(
-                self._render_element(element)
-            )
+            html.extend(self._render_element(element, image_paths))
 
         return "\n".join(html)
 
     def _render_element(
         self,
         element: DocumentElement,
+        image_paths: Mapping[str, str],
     ) -> list[str]:
         if isinstance(element, Paragraph):
             return self._render_paragraph(element)
@@ -119,7 +119,7 @@ class XHTMLRenderer:
             return self._render_poem(element)
 
         if isinstance(element, Image):
-            return self._render_image(element)
+            return self._render_image(element, image_paths)
 
         return []
 
@@ -151,13 +151,11 @@ class XHTMLRenderer:
         self,
         text: str,
     ) -> list[str]:
-        paragraphs = text.split("\n")
-
         return [
             "<blockquote>",
             *(
                 f"<p>{escape(paragraph)}</p>"
-                for paragraph in paragraphs
+                for paragraph in text.split("\n")
                 if paragraph
             ),
             "</blockquote>",
@@ -179,5 +177,15 @@ class XHTMLRenderer:
     def _render_image(
         self,
         image: Image,
+        image_paths: Mapping[str, str],
     ) -> list[str]:
-        return []
+        source = image_paths.get(image.image_id)
+
+        if source is None:
+            return []
+
+        return [
+            '<figure class="image">',
+            f'<img src="{escape(source, quote=True)}" alt="" />',
+            "</figure>",
+        ]
