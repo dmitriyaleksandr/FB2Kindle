@@ -84,23 +84,53 @@ class XHTMLRenderer:
         element: DocumentElement,
     ) -> list[str]:
 
-        if isinstance(element, Paragraph):
-            return self._render_paragraph(element)
+        if isinstance(
+            element,
+            Paragraph,
+        ):
+            return self._render_paragraph(
+                element,
+            )
 
-        if isinstance(element, Subtitle):
-            return self._render_subtitle(element)
+        if isinstance(
+            element,
+            Subtitle,
+        ):
+            return self._render_subtitle(
+                element,
+            )
 
-        if isinstance(element, Epigraph):
-            return self._render_epigraph(element)
+        if isinstance(
+            element,
+            Epigraph,
+        ):
+            return self._render_epigraph(
+                element,
+            )
 
-        if isinstance(element, Quote):
-            return self._render_quote(element)
+        if isinstance(
+            element,
+            Quote,
+        ):
+            return self._render_quote(
+                element,
+            )
 
-        if isinstance(element, Poem):
-            return self._render_poem(element)
+        if isinstance(
+            element,
+            Poem,
+        ):
+            return self._render_poem(
+                element,
+            )
 
-        if isinstance(element, Image):
-            return self._render_image(element)
+        if isinstance(
+            element,
+            Image,
+        ):
+            return self._render_image(
+                element,
+            )
 
         return []
 
@@ -118,28 +148,51 @@ class XHTMLRenderer:
         subtitle: Subtitle,
     ) -> list[str]:
 
-        return []
+        return [
+            f"<h3>{subtitle.text}</h3>",
+        ]
 
     def _render_epigraph(
         self,
         epigraph: Epigraph,
     ) -> list[str]:
 
-        return []
+        return [
+            "<blockquote>",
+            f"<p>{epigraph.text}</p>",
+            "</blockquote>",
+        ]
 
     def _render_quote(
         self,
         quote: Quote,
     ) -> list[str]:
 
-        return []
+        return [
+            "<blockquote>",
+            f"<p>{quote.text}</p>",
+            "</blockquote>",
+        ]
 
     def _render_poem(
         self,
         poem: Poem,
     ) -> list[str]:
 
-        return []
+        html = [
+            "<div class=\"poem\">",
+        ]
+
+        for line in poem.text.split("\n"):
+            html.append(
+                f"{line}<br/>"
+            )
+
+        html.append(
+            "</div>"
+        )
+
+        return html
 
     def _render_image(
         self,
